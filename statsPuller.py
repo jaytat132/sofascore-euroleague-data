@@ -1,6 +1,7 @@
 import requests
 import json
 import re
+import os
 import psutil
 from datetime import datetime
 from selenium import webdriver # selenium 4.20.0
@@ -47,7 +48,10 @@ class SoccerMatch:
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36")
         options.set_capability("goog:loggingPrefs", {"performance": "ALL", "browser": "ALL"}
         )
-        service = Service(ChromeDriverManager().install())
+        chrome_install = ChromeDriverManager().install()
+        folder = os.path.dirname(chrome_install)
+        chromedriver_path = os.path.join(folder, "chromedriver.exe")
+        service = ChromeService(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
 
         retries = 5
@@ -60,8 +64,8 @@ class SoccerMatch:
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
                 
-                team_names = [span.text.lower() for span in soup.find_all('bdi', class_="Text elglCn")]
-                date = [span.text.lower() for span in soup.find_all('bdi', class_="Text bVXOom")]
+                team_names = [span.text.lower() for span in soup.find_all('bdi', class_="Text joBMGr")]
+                date = [span.text.lower() for span in soup.find_all('bdi', class_="Text bkqxZg")]
                 home_goals = [span.text.lower() for span in soup.find_all('span', class_="Text cuVfWD")]
                 away_goals = [span.text.lower() for span in soup.find_all('span', class_="Text hzbACF")]
                 
@@ -84,7 +88,13 @@ class SoccerMatch:
                         # Combine the date and time strings
                         full_date_str = f"{date_str} {time_str}"
                         # Parse the date and time
-                        dt = datetime.strptime(full_date_str, "%d %b %Y %H:%M")
+                        # Try to parse using the first format, if it fails, use the second format
+                        try:
+                         # Try abbreviated month format first
+                            dt = datetime.strptime(full_date_str, "%d %b %Y %H:%M")
+                        except ValueError:
+                         # If it fails, try full month name format
+                            dt = datetime.strptime(full_date_str, "%d %B %Y %H:%M")
                         # Format the datetime object to the desired format
                         formatted_date = dt.strftime("%m/%d/%Y, %H:%M")
                         self.date = formatted_date
